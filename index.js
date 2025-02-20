@@ -20,6 +20,7 @@ import classRouter from "./routes/eschools/schools/class.router.js";
 import subjectRouter from "./routes/eschools/schools/subject.route.js";
 import teacherRouter from "./routes/eschools/schools/teacherRoute.js";
 import studentRouter from "./routes/eschools/schools/student.route.js";
+import reportSchoolrouter from "./routes/eschools/schools/schoolreport.router.js";
 dotenv.config();
 
 
@@ -54,6 +55,7 @@ app.use("/eschools/schools", classRouter )
 app.use("/eschools/schools", subjectRouter)
 app.use("/eschools/schools", teacherRouter)
 app.use("/eschools/schools", studentRouter)
+app.use("/eschools/schools", reportSchoolrouter)
 
 
 

@@ -8,6 +8,8 @@ import mongoose from "mongoose";
 import StudentScore from "../../../models/Eschools/schools/schoolScore.js"
 import Assignment from "../../../models/Eschools/schools/AssignmentSchema.js";
 import schoolClass from "../../../models/Eschools/schools/schoolClass.js";
+import noticeSchema from "../../../models/Eschools/schools/noticeSchema.js";
+import schoolUsers from "../../../models/Eschools/schools/schoolUsers.js";
 const teacherRouter = express.Router()
 
 
@@ -299,7 +301,7 @@ teacherRouter.get("/getmyassignedscores", verifyToken, async(req, res) => {
         const admin = await SchoolUsers.findOne({schoolId: teacher.schoolId})
         if(!admin) return res.status(404).json({message: "admin details not found"})
         
-        const teacherScore = await StudentScore.findOne({teacherId:req.user.id}).populate("studentId", "name email sclass").populate("subjectId", "name")
+        const teacherScore = await StudentScore.find({teacherId:req.user.id}).populate("studentId", "name email sclass").populate("subjectId", "name")
         if(!teacherScore) return res.status(404).json({message: "teacher score not found in the scores table"})
         
         console.log(teacherScore)
@@ -445,6 +447,21 @@ teacherRouter.get("/student/:studentId", verifyToken, async (req, res) => {
     }
 });
 
+
+teacherRouter.get("/getteachernotice", verifyToken, async(req, res) => {
+    try {
+        const admin = await schoolUsers.findById(req.user.id)
+        if(!admin) return res.status(404).json({message:"not found"})
+        
+        const notice = await noticeSchema.find({schoolId: admin.schoolId}).populate("schoolId", "name")
+        if(!notice) return res.status(404).json({message:"your  admin details not found"})
+        
+        return res.status(200).json(notice)
+      } catch (error) {
+        console.log(error)
+        return res.status(500).json({message:"an error occurred"})
+      }
+})
 
 
 

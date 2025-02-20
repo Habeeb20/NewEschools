@@ -8,9 +8,12 @@ import SchoolUsers from "../../../models/Eschools/schools/schoolUsers.js";
 import User from "../../../models/Eschools/user.js";
 import School from "../../../models/Eschools/schools/school.schema.js"
 import jwt from "jsonwebtoken"
-import { roleBasedAccess, Protect } from "../../../middleware/protect.js";
+import { roleBasedAccess, Protect, verifyToken } from "../../../middleware/protect.js";
 import nodemailer from "nodemailer"
 import bcryptjs from "bcryptjs";
+import noticeSchema from "../../../models/Eschools/schools/noticeSchema.js";
+import Notice from "../../../models/Eschools/schools/noticeSchema.js";
+
 
 
 const schooluserRouter = express.Router();
@@ -390,8 +393,60 @@ schooluserRouter.put("/editstudent/:id", Protect, async (req, res) => {
       res.status(500).json({ error: "An error occurred" });
     }
   });
+
+
+  ///make announcement
+  schooluserRouter.post("/postnotice", verifyToken, async(req, res) => {
+    const {issue} = req.body
+    try {
+      const admin = await User.findById(req.user.id)
+      if(!admin) return res.status(404).json({message:"not found"})
+      
+        
+        const school = await School.findOne({ userId: req.user.id });
+        if (!school) {
+            return res.status(404).json({ error: "No school found for this user" });
+        }
+
+       
+
+      const newNotice = new noticeSchema({
+        schoolId: school.id,
+        issue
+      })
+      await newNotice.save()
+      return res.status(200).json("successfully sent")
+    } catch (error) {
+      console.log(error)
+      return res.status(500).json({message:"an error occurred"})
+    }
+  })
   
 
+  ///get announcement
 
+  schooluserRouter.get("/getnotices", verifyToken, async (req, res) => {
+    try {
+       
+        const school = await School.findOne({ userId: req.user.id });
+        if (!school) {
+            return res.status(404).json({ message: "No school found for this user." });
+        }
+
+        const notices = await Notice.find({ schoolId: school._id }) 
+            .populate("schoolId", "name") 
+            .sort({ createdAt: -1 }); 
+
+        
+        if (notices.length === 0) {
+            return res.status(404).json({ message: "No announcements found for this school." });
+        }
+
+        return res.status(200).json(notices);
+    } catch (error) {
+        console.error("Error fetching notices:", error);
+        return res.status(500).json({ message: "An error occurred while fetching announcements." });
+    }
+});
 
 export default schooluserRouter;

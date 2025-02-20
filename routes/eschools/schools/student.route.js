@@ -3,6 +3,7 @@ import StudentScore from "../../../models/Eschools/schools/schoolScore.js";
 import { verifyToken } from "../../../middleware/protect.js";
 import schoolUsers from "../../../models/Eschools/schools/schoolUsers.js";
 import Assignment from "../../../models/Eschools/schools/AssignmentSchema.js";
+import noticeSchema from "../../../models/Eschools/schools/noticeSchema.js";
 
 const studentRouter = express.Router();
 
@@ -92,6 +93,43 @@ studentRouter.get("/studentgetallteachers", verifyToken, async (req, res) => {
   }
 });
 
+
+//get all students and teachers in the school
+
+studentRouter.get("/getallschoolusers", verifyToken, async(req, res) => {
+  try {
+     
+    const student = await schoolUsers.findById(req.user.id);
+    if (!student)
+      return res.status(404).json({ message: "student information not found" });
+
+    const admin = await schoolUsers.find({ schoolId: student.schoolId });
+    if (!admin) return res.status(404).json({ message: "admin not found" });
+
+
+    res.status(200).json(admin);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "An error occurred" });
+  }
+})
+
+
+//get all the announcement
+studentRouter.get("/getstudentnotice", verifyToken, async(req, res) => {
+  try {
+    const admin = await schoolUsers.findById(req.user.id)
+    if(!admin) return res.status(404).json({message:"not found"})
+    
+    const notice = await noticeSchema.find({schoolId: admin.schoolId}).populate("schoolId", "name")
+    if(!notice) return res.status(404).json({message:"your  admin details not found"})
+    
+    return res.status(200).json(notice)
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({message:"an error occurred"})
+  }
+})
 
 
 export default studentRouter;
