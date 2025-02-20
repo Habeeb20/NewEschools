@@ -1,4 +1,5 @@
 
+import schoolUsers from "../models/Eschools/schools/schoolUsers.js";
 import User from "../models/Eschools/user.js"
 
 
@@ -93,5 +94,37 @@ export const isAuthenticate = async (req, res, next) => {
     };
 };
 
-  
+export const Protect2 = async (req, res, next) => {
+  let token;
+
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer")
+  ) {
+    try {
+      token = req.headers.authorization.split(" ")[1]; // Extract token from header
+
+      // Verify token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+      // Attach user info to request
+      req.user = await schoolUsers.findById(decoded.id).select("-password");
+      if (!req.user) {
+        res.status(401);
+        throw new Error("User not found.");
+      }
+
+      next(); // Proceed to the next middleware/controller
+    } catch (error) {
+      console.error(error);
+      res.status(401);
+      throw new Error("Not authorized, token failed.");
+    }
+  }
+
+  if (!token) {
+    res.status(401);
+    throw new Error("Not authorized, no token provided.");
+  }
+};
   

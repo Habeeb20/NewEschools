@@ -1,84 +1,80 @@
-
+import mongoose from "mongoose";
 import express from "express";
 import School from "../../../models/Eschools/schools/school.schema.js";
 import Class from "../../../models/Eschools/schools/schoolClass.js"
 import SchoolUser from "../../../models/Eschools/schools/schoolUsers.js";
 import Subject from "../../../models/Eschools/schools/schoolSubject.js";
-import { Protect } from "../../../middleware/protect.js";
+import { Protect, verifyToken } from "../../../middleware/protect.js";
 import User from "../../../models/Eschools/user.js";
+import schooluserRouter from "./schoolusers.route.js";
 const subjectRouter = express.Router()
 // Create a new subject
+
+
 subjectRouter.post("/create-subject", Protect, async (req, res) => {
     try {
         const { name, classes } = req.body;
 
-      
+        // Check if admin exists
         const admin = await User.findById(req.user._id);
         if (!admin) {
             return res.status(404).json({ message: "Not authenticated" });
         }
 
-       
+        // Find the school associated with the admin
         const school = await School.findOne({ userId: req.user._id });
         if (!school) {
             return res.status(403).json({ error: "No school found for this user" });
         }
 
-        const students = await SchoolUser.find({ classId: { $in: classes } });
+        // Convert class names to ObjectIds
+        const foundClasses = await Class.find({ name: { $in: classes }, schoolId: school._id });
+        console.log("my found class", foundClasses)
+        console.log("my class!!", classes)
+        // Ensure all provided classes exist and belong to the school
+        if (foundClasses.length === 0) {
+            return res.status(400).json({ message: "no class belong to this school" });
+        }
 
-      
+        // Get the ObjectIds of the valid classes
+        const classIds = foundClasses.map(cls => cls._id);
+
+        // Create the new subject
         const newSubject = new Subject({
             name,
-            classes,
-            schoolId: school._id, 
-            students: students.map(student => ({
-                studentId: student._id, 
-                scores: {
-                    firstTest: 0,
-                    secondTest: 0,
-                    exam: 0,
-                    total: 0,
-                    grade: "F"
-                }
-            }))
+            classes: classIds,
+            schoolId: school._id,
         });
 
         await newSubject.save();
 
-     
-        const hasSubjectsField = SchoolUser.schema.paths.subjects;
-        if (hasSubjectsField) {
-            await SchoolUser.updateMany(
-                { _id: { $in: students.map(s => s._id) } },
-                { $push: { subjects: newSubject._id } }
-            );
-        }
-
         res.status(201).json({ message: "Subject created successfully", subject: newSubject });
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Failed to create subject" });
     }
 });
+
+
 // Get all subjects
 subjectRouter.get("/get-my-subjects", Protect, async (req, res) => {
     try {
-        // Check if the user is an authenticated admin
+      
         const admin = await User.findById(req.user._id);
         if (!admin) {
             return res.status(403).json({ message: "Not authenticated" });
         }
 
-        // Find the school associated with the admin
         const school = await School.findOne({ userId: req.user._id });
         if (!school) {
             return res.status(404).json({ error: "No school found for this user" });
         }
 
-        // Find all subjects linked to this school
+      
         const subjects = await Subject.find({ schoolId: school._id })
             .populate("classes", "name") // Populate class names
-            .populate("students.studentId", "name email classId"); // Populate student details
+            .populate("schoolId", "schoolName" );
 
         res.status(200).json({ message: "Subjects retrieved successfully", subjects });
     } catch (error) {
@@ -86,5 +82,26 @@ subjectRouter.get("/get-my-subjects", Protect, async (req, res) => {
         res.status(500).json({ error: "Failed to retrieve subjects" });
     }
 });
+
+
+//get all subjects by teachers
+subjectRouter.get("/get-my-school-subjects", verifyToken, async(req, res) => {
+    try {
+        const teacher = await SchoolUser.findById(req.user.id)
+        if(!teacher) return res.status(404).json({message:"this teacher details is not found"})
+        
+        const school = await SchoolUser.findOne({schoolId: teacher.schoolId})
+        if(!school) return res.status(404).json({message: "school not found"})
+        
+            const subjects = await Subject.find({ schoolId: teacher.schoolId })
+            .populate("classes", "name") // Populate class names
+            .populate("schoolId", "schoolName" );
+
+        res.status(200).json({ message: "Subjects retrieved successfully", subjects });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Failed to retrieve subjects" });
+    }
+})
 
 export default subjectRouter

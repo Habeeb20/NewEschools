@@ -376,7 +376,7 @@ schooluserRouter.put("/editstudent/:id", Protect, async (req, res) => {
   });
   
 
-
+//get a single student
   schooluserRouter.get("/getstudent/:id", Protect, async (req, res) => {
     try {
       const student = await SchoolUsers.findById(req.params.id).populate("schoolId", "name");
